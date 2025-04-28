@@ -160,6 +160,25 @@ def compare_value_functions():
         mean_rel_diff = np.mean(rel_diff)
         median_rel_diff = np.median(rel_diff)
         
+        # NEW CODE: Evaluate value functions at specific initial point
+        from scipy.interpolate import RectBivariateSpline
+        
+        # Create interpolation functions if not already created
+        if not grid_compatible:
+            # Use already created interpolation functions
+            W_a_init = float(interp_a(env.sim_eta_0, env.sim_H_0))
+            W_b_init = float(interp_b(env.sim_eta_0, env.sim_H_0))
+        else:
+            # Create interpolation functions
+            interp_a = RectBivariateSpline(eta_grid, H_grid, W_a)
+            interp_b = RectBivariateSpline(eta_grid, H_grid, W_b)
+            W_a_init = float(interp_a(env.sim_eta_0, env.sim_H_0))
+            W_b_init = float(interp_b(env.sim_eta_0, env.sim_H_0))
+        
+        # Calculate differences at initial point
+        abs_diff_init = abs(W_b_init - W_a_init)
+        rel_diff_init = abs_diff_init / W_a_range
+        
         # Create figure
         fig, axes = plt.subplots(1, 3, figsize=(18, 6))
         
@@ -171,6 +190,8 @@ def compare_value_functions():
         axes[0].set_ylabel('Climate Damage H')
         axes[0].set_title(f'Value Function - Model {TAG_A}')
         axes[0].grid(True, linestyle='--', alpha=0.3)
+        # Mark initial point
+        axes[0].plot(env.sim_eta_0, env.sim_H_0, 'r*', markersize=10)
         
         # Plot W_b
         contour = axes[1].contourf(eta_mesh, H_mesh, W_b, 50, cmap='viridis')
@@ -179,6 +200,8 @@ def compare_value_functions():
         axes[1].set_ylabel('Climate Damage H')
         axes[1].set_title(f'Value Function - Model {TAG_B}')
         axes[1].grid(True, linestyle='--', alpha=0.3)
+        # Mark initial point
+        axes[1].plot(env.sim_eta_0, env.sim_H_0, 'r*', markersize=10)
         
         # Create symmetric diverging normalization around 0
         max_val = max(abs(W_diff.min()), abs(W_diff.max()))
@@ -191,6 +214,8 @@ def compare_value_functions():
         axes[2].set_ylabel('Climate Damage H')
         axes[2].set_title(f'Difference: W_{TAG_B} - W_{TAG_A}')
         axes[2].grid(True, linestyle='--', alpha=0.3)
+        # Mark initial point
+        axes[2].plot(env.sim_eta_0, env.sim_H_0, 'r*', markersize=10)
         
         # Add statistics to the figure
         stats_text = (
@@ -198,14 +223,19 @@ def compare_value_functions():
             f"Median Absolute Diff: {median_abs_diff:.4f}\n"
             f"Max Absolute Diff: {max_abs_diff:.4f}\n"
             f"Mean Relative Diff: {mean_rel_diff:.4f}\n"
-            f"Median Relative Diff: {median_rel_diff:.4f}"
+            f"Median Relative Diff: {median_rel_diff:.4f}\n\n"
+            f"At Initial Point (η={env.sim_eta_0:.4f}, H={env.sim_H_0:.4f}, τ={env.tau_0:.4f}):\n"
+            f"Value A: {W_a_init:.4f}\n"
+            f"Value B: {W_b_init:.4f}\n"
+            f"Absolute Diff: {abs_diff_init:.4f}\n"
+            f"Relative Diff: {rel_diff_init:.4f}"
         )
         
-        plt.figtext(0.5, 0.01, stats_text, ha="center", fontsize=12, 
-                   bbox={"facecolor":"white", "alpha":0.8, "pad":5})
+        # plt.figtext(0.5, 0.01, stats_text, ha="center", fontsize=12, 
+        #            bbox={"facecolor":"white", "alpha":0.8, "pad":5})
         
         plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15)
+        plt.subplots_adjust(bottom=0.25)  # Increased bottom margin for stats text
         plt.savefig(f"{COMPARE_DIR}/value_function_comparison.png", dpi=300, bbox_inches='tight')
         plt.close()
         
@@ -219,7 +249,12 @@ def compare_value_functions():
             f.write(f"Maximum Absolute Difference: {max_abs_diff:.6f}\n")
             f.write(f"Value Function A Range: {W_a_range:.6f}\n")
             f.write(f"Mean Relative Difference: {mean_rel_diff:.6f}\n")
-            f.write(f"Median Relative Difference: {median_rel_diff:.6f}\n")
+            f.write(f"Median Relative Difference: {median_rel_diff:.6f}\n\n")
+            f.write(f"Evaluation at Initial Point (η={env.sim_eta_0:.6f}, H={env.sim_H_0:.6f}, τ={env.tau_0:.6f}):\n")
+            f.write(f"Value Function A: {W_a_init:.6f}\n")
+            f.write(f"Value Function B: {W_b_init:.6f}\n")
+            f.write(f"Absolute Difference: {abs_diff_init:.6f}\n")
+            f.write(f"Relative Difference: {rel_diff_init:.6f}\n")
         
     except Exception as e:
         print(f"Error comparing value functions: {e}")
